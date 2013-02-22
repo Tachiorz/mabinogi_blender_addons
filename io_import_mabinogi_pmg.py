@@ -279,30 +279,24 @@ def load_pmg(filename,
         vgroup = ob.vertex_groups.new()
         vgroup.name = "_" + pm[i].bone_name
         vgroup.add(pm[i].vertexList,1.0,'REPLACE')
-        vgroup.add(skinList,1.0,'SUBTRACT')
         if armature is not None:
             bone = armature.bones.get('_' + pm[i].bone_name)
             if bone is None: bone = armature.bones.get('-' + pm[i].bone_name)
             if bone is not None:
                 vgroup.name = bone.name
-                if bone.parent is not None and bone.parent.name[1:].find('com') != 0 and pm[i].skinCount > 0:
-                    vgroup2 = ob.vertex_groups.new()
-                    vgroup2.name = bone.parent.name
-                    vgroup2.add(skinList,1.0,'REPLACE')
-                    m = ob.modifiers.new(ob.vertex_groups[1].name, 'ARMATURE')
-                    m.object = sel_ob
-                    m.vertex_group = ob.vertex_groups[1].name
-                else :
-                    vgroup.add(skinList,1.0,'ADD')
-                m = ob.modifiers.new(ob.vertex_groups[0].name, 'ARMATURE')
-                m.object = sel_ob
-                m.vertex_group = ob.vertex_groups[0].name
-
         ob.select = True
         if prev_ob is not None: prev_ob.select = True
         bpy.context.scene.objects.active = ob
         bpy.ops.object.join()
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.remove_doubles(threshold=0.1)
+        bpy.ops.object.mode_set(mode='OBJECT')
         prev_ob = ob
+    # add armature modifiers
+    for v in prev_ob.vertex_groups:
+        m = prev_ob.modifiers.new(v.name, 'ARMATURE')
+        m.object = sel_ob
+        m.vertex_group = v.name
 
     file.close()
 
