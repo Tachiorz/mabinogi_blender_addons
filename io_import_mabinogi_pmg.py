@@ -25,6 +25,12 @@ class Vertex:
     rgba = 0
     u,v = 0,0
 
+class Skin:
+    n = 0
+    a = 0
+    weight = 1.0
+    b = 1
+    
 class MabinogiMesh:
     bone_name = ""
     mesh_name = ""
@@ -92,7 +98,11 @@ def load_pm17(file):
         new_v.nx, new_v.ny, new_v.nz, new_v.rgba = struct.unpack("<fffi", file.read(16))
         new_v.u, new_v.v = struct.unpack("<ff", file.read(8))
         pm.vertexArray += [new_v]
-    file.seek(pm.skinCount*16,1) # skip skins
+    #file.seek(pm.skinCount*16,1) # skip skins
+    for s in range(pm.skinCount):
+        new_s = Skin()
+        new_s.n, new_s.a, new_s.weight, new_s.b = struct.unpack("<iifi", file.read(16))
+        pm.skinArray += [new_s]
     return pm
 
 def load_pm20(file):
@@ -137,7 +147,11 @@ def load_pm20(file):
         new_v.nx, new_v.ny, new_v.nz, new_v.rgba = struct.unpack("<fffi", file.read(16))
         new_v.u, new_v.v = struct.unpack("<ff", file.read(8))
         pm.vertexArray += [new_v]
-    file.seek(pm.skinCount*16,1) # skip skins
+    #file.seek(pm.skinCount*16,1) # skip skins
+    for s in range(pm.skinCount):
+        new_s = Skin()
+        new_s.n, new_s.a, new_s.weight, new_s.b = struct.unpack("<iifi", file.read(16))
+        pm.skinArray += [new_s]
     return pm
 
 def load_pmg(filename,
@@ -211,7 +225,7 @@ def load_pmg(filename,
         bmesh.loops.add(pm[i].faceVertexCount)
         for v in range(pm[i].faceVertexCount):
             bmesh.loops[v].vertex_index = pm[i].vertexList[v]
-        #add textures
+        #add materials
         name = pm[i].texture_name
         #image = load_image(name + ".dds", os.path.dirname(filename), recursive=True, place_holder=True)
         if name not in bpy.data.materials:
@@ -232,7 +246,7 @@ def load_pmg(filename,
             material =  bpy.data.materials[name]
             image = material.texture_slots[0].texture.image
         bmesh.materials.append(material)
-
+        #add textures
         bmesh.uv_textures.new()
         uvl = bmesh.uv_layers.active.data[:]
         for v in range(pm[i].faceVertexCount):
@@ -241,11 +255,15 @@ def load_pmg(filename,
             #print(pm[i].vertexArray[idx].u,pm[i].vertexArray[idx].v)
         for face in bmesh.uv_textures[0].data:
             face.image = image
+        #add skins
+        
+        
         bmesh.validate()
         bmesh.update()
         ob = bpy.data.objects.new(pm[i].mesh_name, bmesh)
-        (vector, rot, scale) = pm[i].MajorMatrix.decompose()
-        ob.location = rot * vector
+        (vector, rot, scale) = pm[i].MinorMatrix.decompose()
+        #ob.location = rot * vector
+        ob.matrix_world = pm[i].MajorMatrix
         scn.objects.link(ob)
 
     file.close()
@@ -261,7 +279,12 @@ class IMPORT_MABINOGI_pmg(bpy.types.Operator):
     bl_options= {'REGISTER', 'UNDO'}
 
     filepath= StringProperty(name="File Path", description="Filepath used for importing the PMG file", maxlen=1024, default="")
-
+    
+    filter_glob = StringProperty(
+        default = "*.pmg",
+        options = {'HIDDEN'},
+    )
+    
     def execute(self, context):
         load_pmg(self.filepath,
                  context)

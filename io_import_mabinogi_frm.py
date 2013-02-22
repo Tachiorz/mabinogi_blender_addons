@@ -220,41 +220,47 @@ def load_frm(filename,
         bone[b].LocalToGlobal = load_matrix4x4(file)
         bone[b].Link = load_matrix4x4(file)
         bone[b].name, bone[b].boneid, bone[b].parentid, empty = struct.unpack("<32sbbh", file.read(36))
+        bone[b].name = bone[b].name.decode(encoding="ascii").strip('\x00').strip(' ')
         bone[b].quat1 = load_quaternion(file)
         bone[b].quat2 = load_quaternion(file)
-        print(bone[b].boneid, bone[b].parentid, bone[b].name.decode(encoding="ascii"))
-        nb = bones.new(bone[b].name.decode(encoding="ascii"))
-        #nb.use_inherit_rotation = True
+        print(bone[b].boneid, bone[b].parentid, bone[b].name)
+        nb = bones.new(bone[b].name)
+        nb.transform(bone[b].LocalToGlobal)
+        nb.use_connect = False
+        #(vector, rot, scale) = bone[b].Link.decompose()
         if(bone[b].parentid == -1):
-            nb.head = (0,0,0)
+            #nb.head = (0,0,1)
             nb.use_connect = False
         else:
             nb.parent = bone[bone[b].parentid].nb
-            nb.head = nb.parent.tail
-            nb.use_connect = True
+            #nb.tail = rot.to_matrix() * vector + nb.tail 
+            #nb.translate(nb.parent.head)
+            #nb.use_connect = True
         #use quat2 for bone coordinate
         #nb.tail = bone[b].quat2[0:3]
 
         #use Link matrix for bone translation and rotation
         #this is used in nciky PMG viewer
-        (vector, rot, scale) = bone[b].Link.decompose()
-        nb.tail = rot * vector + nb.head
-
+        #(vector, rot, scale) = bone[b].Link.decompose()
+        #nb.tail = rot * vector + nb.head
+        
         #use LocalToGlobal for bone coordinate
         #(vector, rot, scale) = bone[b].LocalToGlobal.decompose()
         #nb.tail = vector
-
-        #nb.align_roll( mathutils.Vector(bone[b].quat1[0:3]) )
+        
+        nb.tail = bone[b].LocalToGlobal * bone[b].Link * mathutils.Vector((0,0,0))
+        
+        '''
+        head = nb.head[:]
+        nb.head = (0,0,0)
+        nb.tail = (0,0,0)
+        nb.transform(bone[b].Link)
+        #nb.tail = mathutils.Vector((0,0,0))
+        nb.tail = nb.head + mathutils.Vector(head)
+        nb.head = head
+        '''
         bone[b].nb = nb
         #print (vector,rot, scale)
-
-    '''
-    bpy.ops.object.mode_set(mode='OBJECT')
-    for b in range(bones_count):
-        name = bone[b].name.decode(encoding="ascii")
-        (vector, rot, scale) = bone[b].LocalToGlobal.decompose()
-        arm_object.pose.bones[name].rotation_quaternion = rot
-    '''
     
     file.close()
 
@@ -335,6 +341,10 @@ class IMPORT_MABINOGI_frm(bpy.types.Operator):
     bl_options= {'REGISTER', 'UNDO'}
 
     filepath= StringProperty(name="File Path", description="Filepath used for importing the FRM file", maxlen=1024, default="")
+    filter_glob = StringProperty(
+        default = "*.frm",
+        options = {'HIDDEN'},
+    )
 
     def execute(self, context):
         load_frm(self.filepath,
