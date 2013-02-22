@@ -207,6 +207,7 @@ def load_frm(filename,
     bpy.ops.object.armature_add()
     arm_object= bpy.context.active_object
     arm_object.name= "ARM_" + name
+    arm_object.location = (0,0,0)
     arm_object.data.name= arm_object.name
     bpy.ops.object.mode_set(mode='EDIT')
     bones = arm_object.data.edit_bones
@@ -261,7 +262,7 @@ def load_frm(filename,
         '''
         bone[b].nb = nb
         #print (vector,rot, scale)
-    
+    bpy.ops.object.mode_set(mode='OBJECT')
     file.close()
 
 def save_frm(filename,

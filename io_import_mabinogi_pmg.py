@@ -99,6 +99,7 @@ def load_pm17(file):
         new_v.u, new_v.v = struct.unpack("<ff", file.read(8))
         pm.vertexArray += [new_v]
     #file.seek(pm.skinCount*16,1) # skip skins
+    pm.skinArray = list()
     for s in range(pm.skinCount):
         new_s = Skin()
         new_s.n, new_s.a, new_s.weight, new_s.b = struct.unpack("<iifi", file.read(16))
@@ -148,6 +149,7 @@ def load_pm20(file):
         new_v.u, new_v.v = struct.unpack("<ff", file.read(8))
         pm.vertexArray += [new_v]
     #file.seek(pm.skinCount*16,1) # skip skins
+    pm.skinArray = list()
     for s in range(pm.skinCount):
         new_s = Skin()
         new_s.n, new_s.a, new_s.weight, new_s.b = struct.unpack("<iifi", file.read(16))
@@ -207,7 +209,15 @@ def load_pmg(filename,
         if pm_version == 1793 : pm += [load_pm17(file)]
         if pm_version == 2 : pm += [load_pm20(file)]
 
+    #find if the selected object is a an armature
+    armature = None
+    sel_ob = None
+    if len(context.selected_objects) > 0:
+        sel_ob = context.selected_objects[0]
+        if type(sel_ob.data) == bpy.types.Armature : armature = sel_ob.data
+        else : print("No armature selected")
     scn = context.scene
+    prev_ob = None
     for i in range(mesh_count):
         #Add to blender
         print("adding mesh", pm[i].mesh_name)
@@ -255,9 +265,6 @@ def load_pmg(filename,
             #print(pm[i].vertexArray[idx].u,pm[i].vertexArray[idx].v)
         for face in bmesh.uv_textures[0].data:
             face.image = image
-        #add skins
-        
-        
         bmesh.validate()
         bmesh.update()
         ob = bpy.data.objects.new(pm[i].mesh_name, bmesh)
@@ -265,6 +272,37 @@ def load_pmg(filename,
         #ob.location = rot * vector
         ob.matrix_world = pm[i].MajorMatrix
         scn.objects.link(ob)
+        #add skins
+        skinList = list()
+        for s in pm[i].skinArray:
+            skinList += (s.n,)
+        vgroup = ob.vertex_groups.new()
+        vgroup.name = "_" + pm[i].bone_name
+        vgroup.add(pm[i].vertexList,1.0,'REPLACE')
+        vgroup.add(skinList,1.0,'SUBTRACT')
+        if armature is not None:
+            bone = armature.bones.get('_' + pm[i].bone_name)
+            if bone is None: bone = armature.bones.get('-' + pm[i].bone_name)
+            if bone is not None:
+                vgroup.name = bone.name
+                if bone.parent is not None and bone.parent.name[1:].find('com') != 0 and pm[i].skinCount > 0:
+                    vgroup2 = ob.vertex_groups.new()
+                    vgroup2.name = bone.parent.name
+                    vgroup2.add(skinList,1.0,'REPLACE')
+                    m = ob.modifiers.new(ob.vertex_groups[1].name, 'ARMATURE')
+                    m.object = sel_ob
+                    m.vertex_group = ob.vertex_groups[1].name
+                else :
+                    vgroup.add(skinList,1.0,'ADD')
+                m = ob.modifiers.new(ob.vertex_groups[0].name, 'ARMATURE')
+                m.object = sel_ob
+                m.vertex_group = ob.vertex_groups[0].name
+
+        ob.select = True
+        if prev_ob is not None: prev_ob.select = True
+        bpy.context.scene.objects.active = ob
+        bpy.ops.object.join()
+        prev_ob = ob
 
     file.close()
 
