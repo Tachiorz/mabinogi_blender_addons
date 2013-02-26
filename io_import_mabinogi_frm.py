@@ -229,7 +229,7 @@ def load_frm(filename,
         nb.transform(bone[b].LocalToGlobal)
         nb.use_connect = False
         #(vector, rot, scale) = bone[b].Link.decompose()
-        if(bone[b].parentid == -1):
+        if bone[b].parentid == -1:
             #nb.head = (0,0,1)
             nb.use_connect = False
         else:
@@ -250,7 +250,8 @@ def load_frm(filename,
         #nb.tail = vector
         
         nb.tail = bone[b].LocalToGlobal * bone[b].Link * mathutils.Vector((0,0,0))
-        
+        if bone[b].parentid == -1 and nb.tail == nb.head:
+            nb.head[2] += 1
         '''
         head = nb.head[:]
         nb.head = (0,0,0)

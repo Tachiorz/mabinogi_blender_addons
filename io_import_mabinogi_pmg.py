@@ -3,7 +3,7 @@ bl_info= {
     "author": "Tachiorz",
     "version": (0, 1),
     "blender": (2, 5, 7),
-    "location": "File > Import > Mabinogi Framework (.pmg)",
+    "location": "File > Import > Mabinogi Mesh Group (.pmg)",
     "description": "Imports a Mabinogi Mesh Group file",
     "warning": "",
     "wiki_url": "",
@@ -13,7 +13,6 @@ bl_info= {
 
 import os
 import struct
-import copy
 
 import bpy
 import mathutils
