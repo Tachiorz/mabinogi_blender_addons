@@ -48,11 +48,11 @@ def load_ani(filename, context):
         print("Not a supported file type!")
         file.close()
         return
-    file.seek(9*4,1)
+    file.seek(9*4, os.SEEK_CUR)
     for b in range(ani.boneCount):
         ani.bone += [MabinogiAniData(),]
         _, ani.bone[b].mDataCount, _, ani.bone[b].mTime, ani.bone[b].mSize = struct.unpack("<ihhii", file.read(16))
-        file.seek(2*4,1)
+        file.seek(2*4, os.SEEK_CUR)
         ani.bone[b].frames = list()
         print ("bone %d" % b)
         for f in range(ani.bone[b].mDataCount):
