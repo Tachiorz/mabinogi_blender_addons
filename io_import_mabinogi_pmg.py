@@ -279,10 +279,16 @@ def load_pmg(filename,
         vgroup.name = "_" + pm[i].bone_name
         vgroup.add(pm[i].vertexList,1.0,'REPLACE')
         if armature is not None:
-            bone = armature.bones.get('_' + pm[i].bone_name)
-            if bone is None: bone = armature.bones.get('-' + pm[i].bone_name)
-            if bone is not None:
-                vgroup.name = bone.name
+            bones = dict()
+            for bone in armature.bones:
+                bone_name = bone.name[bone.name.index('__')+3:]
+                bones[bone_name] = bone
+            if pm[i].bone_name in bones:
+                vgroup.name = bones[pm[i].bone_name].name
+            #bone = armature.bones.get('_' + pm[i].bone_name)
+            #if bone is None: bone = armature.bones.get('-' + pm[i].bone_name)
+            #if bone is not None:
+            #    vgroup.name = bone.name
         ob.select = True
         if prev_ob is not None: prev_ob.select = True
         bpy.context.scene.objects.active = ob

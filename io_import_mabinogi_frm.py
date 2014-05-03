@@ -224,45 +224,17 @@ def load_frm(filename,
         bone[b].name = bone[b].name.decode(encoding="ascii").strip('\x00').strip(' ')
         bone[b].quat1 = load_quaternion(file)
         bone[b].quat2 = load_quaternion(file)
-        print(bone[b].boneid, bone[b].parentid, bone[b].name)
-        nb = bones.new(bone[b].name)
+        nb = bones.new(str(b) + "__" + bone[b].name)
+        nb.head = (0, 0, 0)
+        nb.tail = (1, 0, 0)
+        nb['GlobalToLocal'] = bone[b].GlobalToLocal
         nb.transform(bone[b].LocalToGlobal)
         nb.use_connect = False
-        #(vector, rot, scale) = bone[b].Link.decompose()
         if bone[b].parentid == -1:
-            #nb.head = (0,0,1)
             nb.use_connect = False
         else:
             nb.parent = bone[bone[b].parentid].nb
-            #nb.tail = rot.to_matrix() * vector + nb.tail 
-            #nb.translate(nb.parent.head)
-            #nb.use_connect = True
-        #use quat2 for bone coordinate
-        #nb.tail = bone[b].quat2[0:3]
-
-        #use Link matrix for bone translation and rotation
-        #this is used in nciky PMG viewer
-        #(vector, rot, scale) = bone[b].Link.decompose()
-        #nb.tail = rot * vector + nb.head
-        
-        #use LocalToGlobal for bone coordinate
-        #(vector, rot, scale) = bone[b].LocalToGlobal.decompose()
-        #nb.tail = vector
-        
-        nb.tail = bone[b].LocalToGlobal * bone[b].Link * mathutils.Vector((0,0,0))
-        if bone[b].parentid == -1 and nb.tail == nb.head:
-            nb.head[2] += 1
-        '''
-        head = nb.head[:]
-        nb.head = (0,0,0)
-        nb.tail = (0,0,0)
-        nb.transform(bone[b].Link)
-        #nb.tail = mathutils.Vector((0,0,0))
-        nb.tail = nb.head + mathutils.Vector(head)
-        nb.head = head
-        '''
         bone[b].nb = nb
-        #print (vector,rot, scale)
     bpy.ops.object.mode_set(mode='OBJECT')
     file.close()
 

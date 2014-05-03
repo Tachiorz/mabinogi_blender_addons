@@ -59,10 +59,12 @@ def load_ani(filename, context):
             ani.bone[b].frames += [MabinogiFrame(),]
             ani.bone[b].frames[f].mTime = struct.unpack("<i", file.read(4))[0]
             ani.bone[b].frames[f].move = struct.unpack("<4f", file.read(16))
-            ani.bone[b].frames[f].roto = struct.unpack("<4f", file.read(16))
-            print (ani.bone[b].frames[f].mTime)
-            print ("%.2f %.2f %.2f %.2f" % ani.bone[b].frames[f].move)
-            print ("%.2f %.2f %.2f %.2f" % ani.bone[b].frames[f].roto)
+            ani.bone[b].frames[f].roto = list(struct.unpack("<4f", file.read(16)))
+            ani.bone[b].frames[f].roto = [-ani.bone[b].frames[f].roto[3]] + ani.bone[b].frames[f].roto[:3]
+            if f == 0:
+                print (ani.bone[b].frames[f].mTime)
+                print ("%.2f %.2f %.2f %.2f" % ani.bone[b].frames[f].move)
+                print ("%.2f %.2f %.2f %.2f" % tuple(ani.bone[b].frames[f].roto))
 
 
     #find if the selected object is a an armature
@@ -79,18 +81,23 @@ def load_ani(filename, context):
     sel_ob.animation_data_create()
     action = bpy.data.actions.new(name=name)
     sel_ob.animation_data.action = action
-    pose_bones = sel_ob.pose.bones
+    pb = sel_ob.pose.bones
+    eb = sel_ob.data.bones
+    pose_bones = dict()
+    edit_bones = dict()
+    for i in range(len(pb)):
+        bone_id = int(pb[i].name[:pb[i].name.index('__')])
+        pose_bones[bone_id] = pb[i]
+        edit_bones[bone_id] = eb[i]
     for b in range(ani.boneCount):
         for f in range(ani.bone[b].mDataCount):
             context.scene.frame_set(f+1)
             pos = ani.bone[b].frames[f].move
             quat = mathutils.Quaternion(ani.bone[b].frames[f].roto)
             mat = mathutils.Matrix.Translation(pos) * quat.to_matrix().to_4x4()
-            print (pose_bones[b].matrix)
-            if pose_bones[b].parent is None:
-                pose_bones[b].matrix = mat
-            else:
-                pose_bones[b].matrix = pose_bones[b].parent.matrix * mat
+            pose_bones[b].location = ani.bone[b].frames[f].move[:3]
+            pose_bones[b].rotation_quaternion = quat
+            #pose_bones[b].matrix = mathutils.Matrix(edit_bones[b]['LocalToGlobal']) * pose_bones[b].matrix
             pose_bones[b].keyframe_insert("rotation_quaternion")
             pose_bones[b].keyframe_insert("location")
 
