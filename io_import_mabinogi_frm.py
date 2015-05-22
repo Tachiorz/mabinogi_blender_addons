@@ -13,6 +13,7 @@ bl_info= {
 
 import os
 import struct
+import math
 
 import bpy
 import mathutils
@@ -178,7 +179,30 @@ def load_quaternion(file):
 def save_quaternion(file,q ):
     [file.write(struct.pack("<f", q[i])) for i in range(4)]
     return q
-    
+
+def vec_roll_to_mat3(vec, roll):
+    target = mathutils.Vector((0,1,0))
+    nor = vec.normalized()
+    axis = target.cross(nor)
+    if axis.dot(axis) > 0.0000000001: # this seems to be the problem for some bones, no idea how to fix
+        axis.normalize()
+        theta = target.angle(nor)
+        bMatrix = mathutils.Matrix.Rotation(theta, 3, axis)
+    else:
+        updown = 1 if target.dot(nor) > 0 else -1
+        bMatrix = mathutils.Matrix.Scale(updown, 3)
+    rMatrix = mathutils.Matrix.Rotation(roll, 3, nor)
+    mat = rMatrix * bMatrix
+    return mat
+
+def mat3_to_vec_roll(mat):
+    vec = mat.col[1]
+    vecmat = vec_roll_to_mat3(mat.col[1], 0)
+    vecmatinv = vecmat.inverted()
+    rollmat = vecmatinv * mat
+    roll = math.atan2(rollmat[0][2], rollmat[2][2])
+    return vec, roll
+
 def load_frm(filename,
              context):
     '''Read and import the FRM file.'''
@@ -213,7 +237,10 @@ def load_frm(filename,
     bones = arm_object.data.edit_bones
     for b in bones:
         bones.remove(b)
-    
+    bone_space = mathutils.Matrix(((0, 1, 0, 0),
+                                   (0, 0, 1, 0),
+                                   (1, 0, 0, 0),
+                                   (0, 0, 0, 1)))
     bone = list()
     for b in range(bones_count):
         bone.append(MabinogiBone())
@@ -224,15 +251,15 @@ def load_frm(filename,
         bone[b].name = bone[b].name.decode(encoding="ascii").strip('\x00').strip(' ')
         bone[b].quat1 = load_quaternion(file)
         bone[b].quat2 = load_quaternion(file)
+        mat = bone[b].LocalToGlobal * bone_space
+        pos = mat.to_translation()
+        axis, roll = mat3_to_vec_roll(mat.to_3x3())
         nb = bones.new(str(b) + "__" + bone[b].name)
-        nb.head = (0, 0, 0)
-        nb.tail = (1, 0, 0)
-        nb['GlobalToLocal'] = bone[b].GlobalToLocal
-        nb.transform(bone[b].LocalToGlobal)
+        nb.head = pos
+        nb.tail = pos + axis
+        nb.roll = roll
         nb.use_connect = False
-        if bone[b].parentid == -1:
-            nb.use_connect = False
-        else:
+        if bone[b].parentid != -1:
             nb.parent = bone[bone[b].parentid].nb
         bone[b].nb = nb
     bpy.ops.object.mode_set(mode='OBJECT')

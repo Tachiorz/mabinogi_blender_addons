@@ -89,17 +89,26 @@ def load_ani(filename, context):
         bone_id = int(pb[i].name[:pb[i].name.index('__')])
         pose_bones[bone_id] = pb[i]
         edit_bones[bone_id] = eb[i]
+    bone_space = mathutils.Matrix(((0, 1, 0, 0),
+                                   (0, 0, 1, 0),
+                                   (1, 0, 0, 0),
+                                   (0, 0, 0, 1)))
     for b in range(ani.boneCount):
         for f in range(ani.bone[b].mDataCount):
             context.scene.frame_set(f+1)
-            pos = ani.bone[b].frames[f].move
+            pos = ani.bone[b].frames[f].move[:3]
             quat = mathutils.Quaternion(ani.bone[b].frames[f].roto)
             mat = mathutils.Matrix.Translation(pos) * quat.to_matrix().to_4x4()
-            pose_bones[b].location = ani.bone[b].frames[f].move[:3]
-            pose_bones[b].rotation_quaternion = quat
-            #pose_bones[b].matrix = mathutils.Matrix(edit_bones[b]['LocalToGlobal']) * pose_bones[b].matrix
+            link = edit_bones[b].matrix_local * bone_space.inverted()
+            if edit_bones[b].parent is not None:
+                parent_link = edit_bones[b].parent.matrix_local * bone_space.inverted()
+                link = parent_link.inverted() * link
+            mat *= bone_space
+            link *= bone_space
+            pose_bones[b].matrix_basis = link.inverted() * mat
             pose_bones[b].keyframe_insert("rotation_quaternion")
             pose_bones[b].keyframe_insert("location")
+            #bpy.context.scene.update()
 
 
 from bpy.props import StringProperty
