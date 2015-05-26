@@ -18,6 +18,8 @@ import bpy
 import mathutils
 from bpy_extras.image_utils import load_image
 
+material_dict = None
+
 class Vertex:
     x,y,z = 0,0,0
     nx,ny,nz = 0,0,0 # normals
@@ -155,6 +157,16 @@ def load_pm20(file):
         pm.skinArray += [new_s]
     return pm
 
+
+def init_material_dict(root_path):
+    global material_dict
+    material_dict = dict()
+    for (dirpath, dirnames, filenames) in os.walk(root_path):
+        for name in filenames:
+            mat_name = name[:-4]
+            material_dict[mat_name] = dirpath
+
+
 def load_pmg(filename,
              context):
     '''Read the PMG file.'''
@@ -208,6 +220,10 @@ def load_pmg(filename,
         if pm_version == 1793 : pm += [load_pm17(file)]
         if pm_version == 2 : pm += [load_pm20(file)]
 
+    addon_prefs = context.user_preferences.addons[__name__].preferences
+    if material_dict is None:
+        init_material_dict(addon_prefs.materials_path)
+
     #find if the selected object is a an armature
     bone_space = mathutils.Matrix(((0, 1, 0, 0),
                                    (0, 0, 1, 0),
@@ -249,7 +265,10 @@ def load_pmg(filename,
         #image = load_image(name + ".dds", os.path.dirname(filename), recursive=True, place_holder=True)
         if name not in bpy.data.materials:
             print("LOADING TEXTURE ", name)
-            image = load_image(name + ".dds", os.path.dirname(filename), recursive=True, place_holder=True)
+            if name in material_dict:
+                image = load_image(name + ".dds", material_dict[name], recursive=True, place_holder=True)
+            else:
+                image = load_image(name + ".dds", os.path.dirname(filename), recursive=True, place_holder=True)
             texture = bpy.data.textures.new(name=name, type='IMAGE')
             texture.image = image
             material = bpy.data.materials.new(name=name)
@@ -348,10 +367,27 @@ class IMPORT_MABINOGI_pmg(bpy.types.Operator):
         wm.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
+
+class IMPORT_MABINOGI_pmg_prefs(bpy.types.AddonPreferences):
+    '''Import PMG preferences.'''
+    bl_idname = __name__
+    materials_path = StringProperty(
+        name="Path to materials:",
+        subtype='DIR_PATH'
+    )
+
+    def draw(self, context):
+            layout = self.layout
+            layout.label(text="Import PMG preferences")
+            layout.prop(self, "materials_path")
+
+
 def menu_func_mabinogi_pmg(self, context):
     self.layout.operator(IMPORT_MABINOGI_pmg.bl_idname, text="Mabinogi Mesh Group (.pmg)")
 
 def register():
+    global material_dict
+    material_dict = None
     bpy.utils.register_module(__name__)
 
     bpy.types.INFO_MT_file_import.append(menu_func_mabinogi_pmg)
