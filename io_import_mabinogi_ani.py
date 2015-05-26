@@ -95,7 +95,7 @@ def load_ani(filename, context):
                                    (0, 0, 0, 1)))
     for b in range(ani.boneCount):
         for f in range(ani.bone[b].mDataCount):
-            context.scene.frame_set(f+1)
+            context.scene.frame_set(ani.bone[b].frames[f].mTime/50)
             pos = ani.bone[b].frames[f].move[:3]
             quat = mathutils.Quaternion(ani.bone[b].frames[f].roto)
             mat = mathutils.Matrix.Translation(pos) * quat.to_matrix().to_4x4()
