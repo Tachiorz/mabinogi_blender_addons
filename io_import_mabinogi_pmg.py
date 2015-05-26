@@ -209,11 +209,21 @@ def load_pmg(filename,
         if pm_version == 2 : pm += [load_pm20(file)]
 
     #find if the selected object is a an armature
+    bone_space = mathutils.Matrix(((0, 1, 0, 0),
+                                   (0, 0, 1, 0),
+                                   (1, 0, 0, 0),
+                                   (0, 0, 0, 1)))
     armature = None
     sel_ob = None
+    edit_bones = dict()
     if len(context.selected_objects) > 0:
         sel_ob = context.selected_objects[0]
-        if type(sel_ob.data) == bpy.types.Armature : armature = sel_ob.data
+        if type(sel_ob.data) == bpy.types.Armature:
+            armature = sel_ob.data
+            eb = armature.bones
+            for i in range(len(eb)):
+                bone_id = eb[i].name[eb[i].name.index('__')+3:]
+                edit_bones[bone_id] = eb[i]
         else : print("No armature selected")
     scn = context.scene
     prev_ob = None
@@ -269,7 +279,13 @@ def load_pmg(filename,
         ob = bpy.data.objects.new(pm[i].mesh_name, bmesh)
         (vector, rot, scale) = pm[i].MinorMatrix.decompose()
         #ob.location = rot * vector
-        ob.matrix_world = pm[i].MajorMatrix
+        if sel_ob is not None:
+            ob.parent = sel_ob
+            ob.parent_type = 'OBJECT'
+            bone_M = edit_bones[pm[i].bone_name].matrix_local * bone_space.inverted()
+            ob.matrix_world = bone_M * pm[i].MinorMatrix
+        else:
+            ob.matrix_world = pm[i].MajorMatrix
         scn.objects.link(ob)
         #add skins
         skinList = list()
