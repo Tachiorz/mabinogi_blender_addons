@@ -137,7 +137,7 @@ def load_pm17(file):
     pm = load_pmbody17(file, pm)
     return pm
 
-def load_pm20(file, pm_version):
+def load_pm20(file, pm_version=2):
     pm = MabinogiMesh()
     pm_size = struct.unpack("<i", file.read(4))[0]
     pm.MinorMatrix = load_matrix4x4(file)
