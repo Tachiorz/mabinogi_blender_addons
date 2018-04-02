@@ -137,7 +137,7 @@ def load_pm17(file):
     pm = load_pmbody17(file, pm)
     return pm
 
-def load_pm20(file):
+def load_pm20(file, pm_version):
     pm = MabinogiMesh()
     pm_size = struct.unpack("<i", file.read(4))[0]
     pm.MinorMatrix = load_matrix4x4(file)
@@ -155,6 +155,8 @@ def load_pm20(file):
     joint_name = load_lpstring(file)
     state_name = load_lpstring(file)
     norm_name = load_lpstring(file)
+    if pm_version == 3:
+        unk_string = load_lpstring(file)
     color_name = load_lpstring(file)
     pm.texture_name = load_lpstring(file)
     print (pm.mesh_name, pm.bone_name)
@@ -212,13 +214,14 @@ def load_pmg(filename,
                 print("Not a supported pm type!")
                 file.close()
                 return
-            if pm_version != 1793 and pm_version != 2:
+            if pm_version not in (1793, 2, 3):
                 print("Not a supported pm version!", pm_version)
                 file.close()
                 return
             print("reading mesh")
             if pm_version == 1793 : pm.append(load_pm17(file))
             if pm_version == 2 : pm.append(load_pm20(file))
+            if pm_version == 3 : pm.append(load_pm20(file, pm_version))
         pm_subgroups.append(pm)
 
     addon_prefs = context.user_preferences.addons[__name__].preferences
